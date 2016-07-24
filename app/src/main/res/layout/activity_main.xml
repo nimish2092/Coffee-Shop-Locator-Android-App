@@ -9,13 +9,9 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.example.nimish.mapviewtrial.MainActivity">
 
+    <com.google.android.gms.maps.MapView android:id="@+id/mapview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"/>
 
-    <fragment
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:name="com.example.nimish.mapviewtrial.MapViewFragment"
-        android:id="@+id/fragment"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        tools:layout="@layout/map_view_layout" />
+
 </RelativeLayout>

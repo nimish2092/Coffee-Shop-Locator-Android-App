@@ -2,6 +2,7 @@ package com.example.nimish.mapviewtrial;
 
 import android.app.Fragment;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +24,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 public class MapViewFragment extends Fragment  {
     MapView mapView;
     GoogleMap map;
+    LatLng currentLocation;
 
 
 
@@ -49,6 +51,17 @@ public class MapViewFragment extends Fragment  {
             e.printStackTrace();
         }
 
+        String Location = getArguments().getString("message");
+        String[] latlong =  Location.split(",");
+        double latitude = Double.parseDouble(latlong[0]);
+        double longitude = Double.parseDouble(latlong[1]);
+
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longitude),15);
+        map.animateCamera(cameraUpdate);
+
+        MarkerOptions marker = new MarkerOptions().position(new LatLng(latitude,longitude)).title("I am here!");
+        map.addMarker(marker);
+
         // Updates the location and zoom of the MapView
         /*CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(43.1, -87.9),15);
         map.animateCamera(cameraUpdate);
@@ -59,13 +72,7 @@ public class MapViewFragment extends Fragment  {
         return v;
     }
 
-    public void FindcurrentLocation(LatLng currentLocation){
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation,15);
-        map.animateCamera(cameraUpdate);
 
-        MarkerOptions marker = new MarkerOptions().position(currentLocation).title("I am here!");
-        map.addMarker(marker);
-    }
 
     @Override
     public void onResume() {

@@ -13,6 +13,9 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -25,12 +28,32 @@ public class MainActivity extends AppCompatActivity implements
     private static final String TAG = MainActivity.class.getSimpleName();
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
     private LocationRequest locationRequest;
+    MapView mapView;
+    GoogleMap map;
     LatLng currentLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+        // Gets the MapView from the XML layout and creates it
+        mapView = (MapView) findViewById(R.id.mapview);
+        mapView.onCreate(savedInstanceState);
+
+        // Gets to GoogleMap from the MapView and does initialization stuff
+        map = mapView.getMap();
+        map.getUiSettings().setMyLocationButtonEnabled(true);
+        map.setMyLocationEnabled(true);
+        map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+
+        // Needs to call MapsInitializer before doing any CameraUpdateFactory calls
+        try {
+            MapsInitializer.initialize(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         googleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -53,17 +76,26 @@ public class MainActivity extends AppCompatActivity implements
         }
         else {
             handleNewLocation(location);
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation,18);
+            map.animateCamera(cameraUpdate);
+
+            MarkerOptions marker = new MarkerOptions().position(currentLocation).title("I am here!");
+            map.addMarker(marker);
+
         }
 
     }
 
-    private void handleNewLocation(Location location) {
+    public void handleNewLocation(Location location) {
 
         double currentLatitude = location.getLatitude();
         double currentLongitude = location.getLongitude();
         currentLocation = new LatLng(currentLatitude, currentLongitude);
+        /*Bundle bundle = new Bundle();
+        bundle.putString("message", ""+ currentLocation );
         MapViewFragment mapViewFragment = new MapViewFragment();
-        mapViewFragment.FindcurrentLocation(currentLocation);
+        mapViewFragment.setArguments(bundle);
+        //mapViewFragment.FindcurrentLocation(currentLatitude,currentLongitude);*/
 
     }
 
@@ -91,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     protected void onResume() {
+        mapView.onResume();
         super.onResume();
         googleApiClient.connect();
     }
@@ -107,5 +140,18 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onLocationChanged(Location location) {
         handleNewLocation(location);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mapView.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
+
     }
 }
