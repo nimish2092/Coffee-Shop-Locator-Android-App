@@ -1,10 +1,14 @@
 package com.example.nimish.mapviewtrial;
 
 import android.content.IntentSender;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -16,8 +20,24 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements
         GoogleApiClient.ConnectionCallbacks,
@@ -46,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements
         map = mapView.getMap();
         map.getUiSettings().setMyLocationButtonEnabled(true);
         map.setMyLocationEnabled(true);
-        map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 
         // Needs to call MapsInitializer before doing any CameraUpdateFactory calls
         try {
@@ -154,4 +174,177 @@ public class MainActivity extends AppCompatActivity implements
         mapView.onLowMemory();
 
     }
+
+    public void onSearch(View view) {
+        EditText searchField = (EditText) findViewById(R.id.search_field);
+        String searchText = searchField.getText().toString();
+        List<Address> results = null;
+        if (searchText != null || !searchText.equals("")) {
+
+            Geocoder geocoder = new Geocoder(this);
+            try {
+                results = geocoder.getFromLocationName(searchText,1);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Address address = results.get(0);
+            LatLng searchedAddress = new LatLng(address.getLatitude(),address.getLongitude());
+
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(searchedAddress,15);
+            map.animateCamera(cameraUpdate);
+
+            MarkerOptions marker = new MarkerOptions().position(searchedAddress).title("Searched address");
+            map.addMarker(marker);
+
+            double Lat = address.getLatitude();
+            double Longi = address.getLongitude();
+
+
+            findNearbyLocations(Lat,Longi);
+
+        }
+    }
+
+    public void findNearbyLocations(double searchedLatitude, double searchedLongitude) {
+
+        String APIKey = "AIzaSyCk6xfq4jFcg6Qlz5Nlhn2iUug8pndfIP8";
+        String PlacesURL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + searchedLatitude + "," + searchedLongitude + "&radius=1500&type=cafe&key=" + APIKey;
+
+
+
+        Log.d("Lat:",""+searchedLatitude);
+        Log.d("Log:",""+searchedLongitude);
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(PlacesURL).build();
+
+        Call call = client.newCall(request);
+
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+
+                Log.d("Failed:","Failed");
+
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+
+                String jasonObject = response.body().string();
+                Log.d("response:",response.body().string());
+                if (response.isSuccessful()) {
+
+                    try {
+                        parse(jasonObject);
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+
+            }
+        });
+
+
+    }
+
+    public void parse(String jsonObject) throws JSONException {
+        JSONObject NearbyPlacesObject = new JSONObject(jsonObject);
+        JSONArray jPlaces = NearbyPlacesObject.getJSONArray("results");
+        List<HashMap<String, String>> placesList = new ArrayList<HashMap<String,String>>();
+        placesList = getPlaces(jPlaces);
+        final List<HashMap<String, String>> finalPlacesList = placesList;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                placeMarkers(finalPlacesList);
+            }
+        });
+
+    }
+
+    private List<HashMap<String, String>> getPlaces(JSONArray jPlaces){
+        int placesCount = jPlaces.length();
+        List<HashMap<String, String>> placesList = new ArrayList<HashMap<String,String>>();
+        HashMap<String, String> place = null;
+
+        /** Taking each place, parses and adds to list object */
+        for(int i=0; i<placesCount;i++){
+            try {
+                /** Call getPlace with place JSON object to parse the place */
+                place = getPlace((JSONObject)jPlaces.get(i));
+                placesList.add(place);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return placesList;
+    }
+
+
+
+    private HashMap<String, String> getPlace(JSONObject jPlace){
+
+        HashMap<String, String> place = new HashMap<String, String>();
+        String placeName = "";
+        String latitude = "";
+        String longitude = "";
+        String rating = "";
+
+        try {
+            // Extracting Place name, if available
+            if(!jPlace.isNull("name")){
+                placeName = jPlace.getString("name");
+            }
+
+            // Extracting Place Vicinity, if available
+            if(!jPlace.isNull("rating")){
+                rating = jPlace.getString("rating");
+            }
+
+            latitude = jPlace.getJSONObject("geometry").getJSONObject("location").getString("lat");
+            longitude = jPlace.getJSONObject("geometry").getJSONObject("location").getString("lng");
+
+            place.put("place_name", placeName);
+            place.put("rating", rating);
+            place.put("lat", latitude);
+            place.put("lng", longitude);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return place;
+    }
+
+    public void placeMarkers(List<HashMap<String,String>> list) {
+
+        for(int i=0;i<list.size();i++){
+
+            MarkerOptions markerOptions = new MarkerOptions();
+
+            HashMap<String, String> hmPlace = list.get(i);
+
+            double lat = Double.parseDouble(hmPlace.get("lat"));
+
+            double lng = Double.parseDouble(hmPlace.get("lng"));
+
+            String name = hmPlace.get("place_name");
+
+
+            LatLng latLng = new LatLng(lat, lng);
+
+            markerOptions.position(latLng);
+
+            markerOptions.title(name);
+
+            markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+
+            map.addMarker(markerOptions);
+        }
+
+    }
+
 }
