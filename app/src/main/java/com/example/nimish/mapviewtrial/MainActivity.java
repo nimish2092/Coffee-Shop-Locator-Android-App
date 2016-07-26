@@ -1,9 +1,11 @@
 package com.example.nimish.mapviewtrial;
 
+import android.content.Intent;
 import android.content.IntentSender;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,7 +31,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
@@ -51,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements
     MapView mapView;
     GoogleMap map;
     LatLng currentLocation;
+    List<Cafe> cafeList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -313,6 +319,7 @@ public class MainActivity extends AppCompatActivity implements
             place.put("lat", latitude);
             place.put("lng", longitude);
 
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -321,7 +328,12 @@ public class MainActivity extends AppCompatActivity implements
 
     public void placeMarkers(List<HashMap<String,String>> list) {
 
+        double rat = 0;
+        //map.clear();
+
         for(int i=0;i<list.size();i++){
+
+            Cafe newCafe = new Cafe();
 
             MarkerOptions markerOptions = new MarkerOptions();
 
@@ -330,21 +342,46 @@ public class MainActivity extends AppCompatActivity implements
             double lat = Double.parseDouble(hmPlace.get("lat"));
 
             double lng = Double.parseDouble(hmPlace.get("lng"));
+            Log.d("Latlng:",""+lat+" : "+lng);
 
-            String name = hmPlace.get("place_name");
+            String cfname = hmPlace.get("place_name");
 
+            newCafe.name = cfname;
+
+            if(!hmPlace.get("rating").equals("")) {
+
+                 rat = Double.parseDouble(hmPlace.get("rating"));
+            }
+            Log.d("Rating:",""+rat);
+
+            newCafe.rating = rat;
+
+            cafeList.add(newCafe);
 
             LatLng latLng = new LatLng(lat, lng);
 
             markerOptions.position(latLng);
 
-            markerOptions.title(name);
+            markerOptions.title(cfname);
 
             markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
 
             map.addMarker(markerOptions);
         }
 
+        Collections.sort(cafeList, new Comparator<Cafe>() {
+            @Override
+            public int compare(Cafe c1, Cafe c2) {
+                return Double.compare(c2.getRating(),c1.getRating());
+            }
+        });
+
+    }
+
+    public void onNext(View view){
+        Intent intent = new Intent(MainActivity.this,ListOfCafe.class);
+        intent.putParcelableArrayListExtra("mylist", (ArrayList<? extends Parcelable>) cafeList);
+        startActivity(intent);
     }
 
 }
