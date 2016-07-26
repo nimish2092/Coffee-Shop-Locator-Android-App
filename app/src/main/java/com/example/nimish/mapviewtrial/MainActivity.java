@@ -1,16 +1,28 @@
 package com.example.nimish.mapviewtrial;
 
+import android.app.SearchManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Build;
 import android.os.Parcelable;
+import android.support.design.widget.NavigationView;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -57,21 +69,51 @@ public class MainActivity extends AppCompatActivity implements
     GoogleMap map;
     LatLng currentLocation;
     List<Cafe> cafeList = new ArrayList<>();
+    DrawerLayout mDrawerLayout;
+    private SearchView searchView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
 
 
         // Gets the MapView from the XML layout and creates it
         mapView = (MapView) findViewById(R.id.mapview);
         mapView.onCreate(savedInstanceState);
+        mDrawerLayout.setDrawerShadow(R.drawable.ic_shadow, GravityCompat.START);
+
+        getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_action_initialize);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.navigation_view);
+        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(MenuItem menuItem) {
+                menuItem.setChecked(true);
+
+                switch (menuItem.getItemId()) {
+
+                    case R.id.navigation_item_attachment:
+
+                        Intent intent = new Intent(MainActivity.this,ListOfCafe.class);
+                        intent.putParcelableArrayListExtra("mylist", (ArrayList<? extends Parcelable>) cafeList);
+                        startActivity(intent);
+                        break;
+                    default:
+                        Toast.makeText(MainActivity.this, "In default case", Toast.LENGTH_SHORT).show();
+                }
+                mDrawerLayout.closeDrawers();
+                return true;
+
+            }
+        });
 
         // Gets to GoogleMap from the MapView and does initialization stuff
         map = mapView.getMap();
         map.getUiSettings().setMyLocationButtonEnabled(true);
-        map.setMyLocationEnabled(true);
+        //map.led(true);
         map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 
         // Needs to call MapsInitializer before doing any CameraUpdateFactory calls
@@ -91,6 +133,10 @@ public class MainActivity extends AppCompatActivity implements
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
                 .setInterval(10 * 1000)        // 10 seconds, in milliseconds
                 .setFastestInterval(1 * 1000); // 1 second, in milliseconds
+
+
+        // NavigationDrawerFragment drawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_navigation_drawer);
+        //drawerFragment.setup((DrawerLayout)findViewById(R.id.drawer_layout));
     }
 
     @Override
@@ -181,9 +227,10 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    public void onSearch(View view) {
-        EditText searchField = (EditText) findViewById(R.id.search_field);
-        String searchText = searchField.getText().toString();
+
+
+    public void Search(String searchText){
+
         List<Address> results = null;
         if (searchText != null || !searchText.equals("")) {
 
@@ -378,10 +425,60 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    public void onNext(View view){
-        Intent intent = new Intent(MainActivity.this,ListOfCafe.class);
-        intent.putParcelableArrayListExtra("mylist", (ArrayList<? extends Parcelable>) cafeList);
-        startActivity(intent);
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        switch (id) {
+            case android.R.id.home:
+                mDrawerLayout.openDrawer(GravityCompat.START);
+                return true;
+
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.search_menu, menu);
+
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+
+            SearchManager manager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+
+            searchView= (android.support.v7.widget.SearchView) menu.findItem(R.id.action_websearch).getActionView();
+
+            searchView.setSearchableInfo(manager.getSearchableInfo(getComponentName()));
+
+            searchView.setOnQueryTextListener(new android.support.v7.widget.SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String s) {
+                    Log.d("DEBUG","Inside OnQueryTextSubmit");
+                    //removeMarkers();
+                    try {
+                        Search(s);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    return false;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String s) {
+                    return false;
+                }
+            });
+            searchView.setSubmitButtonEnabled(true);
+            searchView.setIconified(true);
+        }
+        return true;
     }
 
 }

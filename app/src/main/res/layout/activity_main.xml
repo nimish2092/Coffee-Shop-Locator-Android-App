@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:id="@+id/drawer_layout"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <LinearLayout
@@ -10,30 +11,6 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         tools:context="com.example.nimish.mapviewtrial.MainActivity">
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <EditText
-                android:layout_width="204dp"
-                android:layout_height="wrap_content"
-                android:id="@+id/search_field" />
-
-            <Button
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Search"
-                android:id="@+id/search_button"
-                android:onClick="onSearch" />
-
-            <Button
-                android:layout_width="64dp"
-                android:layout_height="wrap_content"
-                android:text=">"
-                android:id="@+id/next"
-                android:onClick="onNext" />
-        </LinearLayout>
 
         <com.google.android.gms.maps.MapView android:id="@+id/mapview"
             android:layout_width="match_parent"
@@ -42,14 +19,13 @@
 
     </LinearLayout>
 
-    <fragment
-        android:layout_width="280dp"
+    <android.support.design.widget.NavigationView
+        android:id="@+id/navigation_view"
+        android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:id="@+id/fragment_navigation_drawer"
-        app:layout = "@layout/fragment_navigation_drawer"
-        android:name="com.example.nimish.mapviewtrial.NavigationDrawerFragment"
-        tools:layout="@layout/fragment_navigation_drawer"
-        android:layout_gravity = "start"/>
+        android:layout_gravity="start"
+        app:headerLayout="@layout/fragment_navigation_drawer"
+        app:menu="@menu/drawer_items"/>
 
 
 </android.support.v4.widget.DrawerLayout>
