@@ -4,12 +4,16 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Parcelable;
 import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -79,64 +83,68 @@ public class MainActivity extends AppCompatActivity implements
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
 
 
-        // Gets the MapView from the XML layout and creates it
-        mapView = (MapView) findViewById(R.id.mapview);
-        mapView.onCreate(savedInstanceState);
-        mDrawerLayout.setDrawerShadow(R.drawable.ic_shadow, GravityCompat.START);
+            // Gets the MapView from the XML layout and creates it
+            mapView = (MapView) findViewById(R.id.mapview);
+            mapView.onCreate(savedInstanceState);
 
-        getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_action_initialize);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            mDrawerLayout.setDrawerShadow(R.drawable.ic_shadow, GravityCompat.START);
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.navigation_view);
-        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(MenuItem menuItem) {
-                menuItem.setChecked(true);
+            getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_action_initialize);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-                switch (menuItem.getItemId()) {
+            NavigationView navigationView = (NavigationView) findViewById(R.id.navigation_view);
+            navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+                @Override
+                public boolean onNavigationItemSelected(MenuItem menuItem) {
+                    menuItem.setChecked(true);
 
-                    case R.id.navigation_item_attachment:
+                    switch (menuItem.getItemId()) {
 
-                        Intent intent = new Intent(MainActivity.this,ListOfCafe.class);
-                        intent.putParcelableArrayListExtra("mylist", (ArrayList<? extends Parcelable>) cafeList);
-                        startActivity(intent);
-                        break;
-                    default:
-                        Toast.makeText(MainActivity.this, "In default case", Toast.LENGTH_SHORT).show();
+                        case R.id.navigation_item_attachment:
+
+                            Intent intent = new Intent(MainActivity.this, ListOfCafe.class);
+                            intent.putParcelableArrayListExtra("mylist", (ArrayList<? extends Parcelable>) cafeList);
+                            startActivity(intent);
+                            break;
+                        default:
+                            Toast.makeText(MainActivity.this, "In default case", Toast.LENGTH_SHORT).show();
+                    }
+                    mDrawerLayout.closeDrawers();
+                    return true;
+
                 }
-                mDrawerLayout.closeDrawers();
-                return true;
+            });
 
+            // Gets to GoogleMap from the MapView and does initialization stuff
+            map = mapView.getMap();
+            map.getUiSettings().setMyLocationButtonEnabled(true);
+            //map.led(true);
+            map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+
+            // Needs to call MapsInitializer before doing any CameraUpdateFactory calls
+            try {
+                MapsInitializer.initialize(this);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        });
-
-        // Gets to GoogleMap from the MapView and does initialization stuff
-        map = mapView.getMap();
-        map.getUiSettings().setMyLocationButtonEnabled(true);
-        //map.led(true);
-        map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-
-        // Needs to call MapsInitializer before doing any CameraUpdateFactory calls
-        try {
-            MapsInitializer.initialize(this);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .addApi(LocationServices.API)
-                .build();
-
-        locationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(10 * 1000)        // 10 seconds, in milliseconds
-                .setFastestInterval(1 * 1000); // 1 second, in milliseconds
 
 
-        // NavigationDrawerFragment drawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_navigation_drawer);
-        //drawerFragment.setup((DrawerLayout)findViewById(R.id.drawer_layout));
+
+            googleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+
+            locationRequest = LocationRequest.create()
+                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                    .setInterval(10 * 1000)        // 10 seconds, in milliseconds
+                    .setFastestInterval(1 * 1000); // 1 second, in milliseconds
+
+
+            // NavigationDrawerFragment drawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_navigation_drawer);
+            //drawerFragment.setup((DrawerLayout)findViewById(R.id.drawer_layout));
+
     }
 
     @Override
@@ -232,29 +240,38 @@ public class MainActivity extends AppCompatActivity implements
     public void Search(String searchText){
 
         List<Address> results = null;
-        if (searchText != null || !searchText.equals("")) {
+        if(isNetworkAvailable()) {
+            if (searchText != null || !searchText.equals("")) {
 
-            Geocoder geocoder = new Geocoder(this);
-            try {
-                results = geocoder.getFromLocationName(searchText,1);
-            } catch (IOException e) {
-                e.printStackTrace();
+                Geocoder geocoder = new Geocoder(this);
+                try {
+                    results = geocoder.getFromLocationName(searchText,1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Address address = results.get(0);
+                LatLng searchedAddress = new LatLng(address.getLatitude(),address.getLongitude());
+                map.clear();
+
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(searchedAddress,15);
+                map.animateCamera(cameraUpdate);
+
+                MarkerOptions marker = new MarkerOptions().position(searchedAddress).title("Searched address");
+                map.addMarker(marker);
+
+                double Lat = address.getLatitude();
+                double Longi = address.getLongitude();
+
+
+                findNearbyLocations(Lat,Longi);
+
             }
-            Address address = results.get(0);
-            LatLng searchedAddress = new LatLng(address.getLatitude(),address.getLongitude());
-
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(searchedAddress,15);
-            map.animateCamera(cameraUpdate);
-
-            MarkerOptions marker = new MarkerOptions().position(searchedAddress).title("Searched address");
-            map.addMarker(marker);
-
-            double Lat = address.getLatitude();
-            double Longi = address.getLongitude();
-
-
-            findNearbyLocations(Lat,Longi);
-
+        }
+        else{
+            Snackbar.make(findViewById(R.id.drawer_layout), "No Network Connection!", Snackbar.LENGTH_LONG).setAction("DISMISS", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {}
+            }).show();
         }
     }
 
@@ -267,37 +284,39 @@ public class MainActivity extends AppCompatActivity implements
 
         Log.d("Lat:",""+searchedLatitude);
         Log.d("Log:",""+searchedLongitude);
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder().url(PlacesURL).build();
 
-        Call call = client.newCall(request);
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder().url(PlacesURL).build();
 
-        call.enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
+            Call call = client.newCall(request);
 
-                Log.d("Failed:","Failed");
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
 
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-
-                String jasonObject = response.body().string();
-                Log.d("response:",response.body().string());
-                if (response.isSuccessful()) {
-
-                    try {
-                        parse(jasonObject);
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                    Log.d("Failed:", "Failed");
 
                 }
 
-            }
-        });
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+
+                    String jasonObject = response.body().string();
+                    Log.d("response:", response.body().string());
+                    if (response.isSuccessful()) {
+
+                        try {
+                            parse(jasonObject);
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+
+                }
+            });
+
 
 
     }
@@ -479,6 +498,16 @@ public class MainActivity extends AppCompatActivity implements
             searchView.setIconified(true);
         }
         return true;
+    }
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+        boolean isAvailable = false;
+        if (networkInfo != null && networkInfo.isConnected()){
+            isAvailable = true;
+        }
+        return isAvailable;
     }
 
 }
